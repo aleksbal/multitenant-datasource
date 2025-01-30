@@ -3,9 +3,9 @@
 This project implements a **Spring Boot 3 (Java 21) REST API** with **dynamic database switching** for each tenant (user). 
 [It uses Spring AbstractRoutingDatasource](https://www.baeldung.com/spring-abstract-routing-data-source)
 
-- **Every user has their own database.**  
-- **If a user's database does not exist, it is created on the fly.**  
-- Uses **Spring JDBC, HikariCP connection pooling, and `ThreadLocal` context** for multi-tenancy.  
+- **Every user has their own SL database instance.**  
+- **If a user's database does not exist, it could be created on the fly.**  
+- Uses **Spring JDBC, HikariCP connection pooling, and `ThreadLocal` context** to implement multi-tenancy.  
 
 ---
 
