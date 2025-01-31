@@ -10,7 +10,6 @@
 .springBeans
 .sts4-cache
 
-
 # Created by https://www.gitignore.io/api/git,java,maven,eclipse,windows
 
 ### Eclipse ###
@@ -191,10 +190,10 @@ build/
 bin
 build
 target
+.gradle
 dependency-reduced-pom.xml
 *.sublime-*
 /scratch
-.gradle
 README.html
 *.iml
 .idea
