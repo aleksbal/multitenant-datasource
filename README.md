@@ -1,7 +1,7 @@
 # Dynamic Multi-Tenant Database Switching in Spring Boot  
 
-This project implements a **Spring Boot 3 (Java 21) REST API** with **dynamic database switching** for each tenant (user). 
-[It uses Spring AbstractRoutingDatasource](https://www.baeldung.com/spring-abstract-routing-data-source)
+This project implements a **Spring Boot 3 (Java 21) REST API** with sort of **dynamic database switching** for each tenant (user). 
+Basic problem was in a rudimentary way described [here](https://www.baeldung.com/spring-abstract-routing-data-source). We'll use Spring AbstractRoutingDatasource.
 
 - **Every user has their own SL database instance.**  
 - **If a user's database does not exist, it could be created on the fly.**  
