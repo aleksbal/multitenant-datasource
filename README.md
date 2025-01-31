@@ -25,8 +25,6 @@ Basic problem was in a rudimentary way described [here](https://www.baeldung.com
 /src/main/java/com/example/DynamicDbApi.java  # Single-file Spring Boot application
 ```
 
----
-
 ## 🚀 How It Works  
 
 1. A user makes a request:  
@@ -40,16 +38,124 @@ Basic problem was in a rudimentary way described [here](https://www.baeldung.com
 
 ---
 
-## 🧪 Setup & Run  
+# 📌 Testing Multi-Tenant Database Setup in Spring Boot
 
-### 1️⃣ Ensure MySQL is Running  
+## 🚀 Prerequisites
 
-```sql
-CREATE USER 'root'@'%' IDENTIFIED BY 'root_password';
-GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
-```
+Before running tests, ensure you have the following:
 
-### 2️⃣ Run the Spring Boot App  
+- **Java 21** installed
+- **Gradle** installed
+- **Spring Boot 3.4.2** project set up
+- **H2 in-memory database** configured
+
+## 🛠 Steps to Test
+
+### **1️⃣ Run the Application**
+
+Start the Spring Boot application using:
 
 ```sh
-mvn spring-boot:run
+./gradlew clean build bootRun
+```
+
+### **2️⃣ Verify Initial Tenant Databases**
+
+The application initializes with the following tenants:
+
+- `alice_db`
+- `bob_db`
+- `default_db`
+
+Check if tenants exist by running:
+
+```sh
+curl -X GET "http://localhost:8080/data?username=alice"
+```
+
+Expected Response (if data exists):
+
+```json
+[
+  {"id": 1, "name": "Alice"},
+  {"id": 2, "name": "Bob"}
+]
+```
+
+### **3️⃣ Verify Default Database Handling**
+
+Test an unknown tenant:
+
+```sh
+curl -X GET "http://localhost:8080/data?username=unknown"
+```
+
+Expected Response:
+
+```json
+{
+  "error": "User not found!"
+}
+```
+
+### **4️⃣ Test Adding a New Tenant at Runtime**
+
+If you have an API to add new tenants dynamically, run:
+
+```sh
+curl -X POST "http://localhost:8080/addTenant?username=new_tenant"
+```
+
+Verify:
+
+```sh
+curl -X GET "http://localhost:8080/data?username=new_tenant"
+```
+
+Expected Response:
+
+```json
+[]
+```
+
+### **5️⃣ Debugging Tenant Switching**
+
+If something goes wrong, enable debugging:
+
+```sh
+./gradlew bootRun --debug
+```
+
+Or check logs:
+
+```sh
+tail -f logs/application.log
+```
+
+## ✅ Expected Results
+
+| **Test Case**           | **Expected Result**                |
+| ----------------------- | ---------------------------------- |
+| Access `alice_db`       | Returns data from Alice's database |
+| Access `unknown` tenant | Returns error "User not found!"    |
+| Add new tenant          | Successfully creates new database  |
+| Query new tenant        | Returns empty result set           |
+
+## 🛑 Troubleshooting
+
+- **Issue:** `targetDataSources` error?\
+  **Fix:** Ensure `setTargetDataSources()` is called before `afterPropertiesSet()`.
+- **Issue:** `Cannot connect to database`?\
+  **Fix:** Ensure `org.h2.Driver` is used for H2 databases.
+- **Issue:** `User not found!` error?\
+  **Fix:** Check if the tenant exists using `getResolvedDataSources()`.
+
+## 🎯 Next Steps
+
+- ✅ Write **JUnit tests** for tenant switching.
+- ✅ Implement a **REST API to manage tenants dynamically**.
+- ✅ Improve **database connection pooling optimizations**.
+
+🚀 Happy Testing!
+
+
