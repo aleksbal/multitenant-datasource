@@ -3,13 +3,11 @@ package org.abl.demo.multitenant_datasource;
 import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.*;
 import org.springframework.context.annotation.*;
-import org.springframework.stereotype.Component;
 import org.springframework.jdbc.core.*;
 import org.springframework.jdbc.datasource.lookup.*;
 import com.zaxxer.hikari.*;
 import javax.sql.DataSource;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,6 +20,7 @@ public class MultitenantDatasourceApplication {
 	}
 
 	@Bean
+	@Primary
 	public DataSource multiTenantDataSource() {
 		return new MultiTenantDataSource();
 	}
@@ -43,9 +42,6 @@ public class MultitenantDatasourceApplication {
 
 		@GetMapping
 		public List<Map<String, Object>> getData(@RequestParam String username) {
-			if (!MultiTenantDataSource.hasTenant(username)) {
-				throw new RuntimeException("User not found!");
-			}
 			TenantContext.setTenant(username);
 			try {
 				return jdbcTemplate.queryForList("SELECT * FROM users LIMIT 10");
@@ -71,35 +67,31 @@ public class MultitenantDatasourceApplication {
 		}
 	}
 
-	@Component
-	public static class MultiTenantDataSource extends AbstractRoutingDataSource {
+	public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
-		private static final Map<String, DataSource> dataSources = new ConcurrentHashMap<>();
-		private static final DataSource DEFAULT_DATASOURCE = createDataSource(
-				"jdbc:mysql://localhost:3306/default_db", "default_user", "password"
-		);
+		public MultiTenantDataSource() {
+			// Create the tenant data sources
+			Map<Object, Object> tenantDataSources = new HashMap<>();
+			tenantDataSources.put("alice", createDataSource("alice_db"));
+			tenantDataSources.put("bob", createDataSource("bob_db"));
+			tenantDataSources.put("aleks", createDataSource("aleks_db"));
 
-		static {
-			// todo: static creation, the databases shall be stored in a configuration database and data sources shall be created on demand
-			dataSources.put("alice", createDataSource("jdbc:mysql://localhost:3306/alice_db", "alice_user", "password"));
-			dataSources.put("bob", createDataSource("jdbc:mysql://localhost:3306/bob_db", "bob_user", "password"));
+			// Set them directly in the superclass
+			setDefaultTargetDataSource(createDataSource("default_db"));
+			setTargetDataSources(tenantDataSources);
+
+			// Initialize after setting data sources
+			super.afterPropertiesSet();
 		}
 
-		private static DataSource createDataSource(String url, String username, String password) {
+		private static DataSource createDataSource(String dbName) {
 			var config = new HikariConfig();
-			config.setJdbcUrl(url);
-			config.setUsername(username);
-			config.setPassword(password);
-			config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+			config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;");
+			config.setUsername("sa");
+			config.setPassword("");
+			config.setDriverClassName("org.h2.Driver");
 			config.setMaximumPoolSize(10);
-			config.setMinimumIdle(2);
-			config.setIdleTimeout(30000);
-			config.setMaxLifetime(1800000);
 			return new HikariDataSource(config);
-		}
-
-		public static boolean hasTenant(String tenantId) {
-			return dataSources.containsKey(tenantId);
 		}
 
 		@Override
@@ -107,11 +99,18 @@ public class MultitenantDatasourceApplication {
 			return TenantContext.getTenant();
 		}
 
-		@Override
-		protected DataSource determineTargetDataSource() {
-			String tenantId = TenantContext.getTenant();
-			return (tenantId != null && dataSources.containsKey(tenantId)) ? dataSources.get(tenantId) : DEFAULT_DATASOURCE;
+		public void addTenant(String tenantId) {
+			if (!getResolvedDataSources().containsKey(tenantId)) {
+				DataSource newDataSource = createDataSource(tenantId);
+				Map<Object, Object> updatedDataSources = new HashMap<>(getResolvedDataSources());
+				updatedDataSources.put(tenantId, newDataSource);
+
+				// Update target data sources and reinitialize
+				setTargetDataSources(updatedDataSources);
+				super.afterPropertiesSet();
+			}
 		}
 	}
+
 }
 
