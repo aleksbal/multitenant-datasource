@@ -71,14 +71,14 @@ public class MultitenantDatasourceApplication {
 
 		public MultiTenantDataSource() {
 			// Create the tenant data sources
-			Map<Object, Object> tenantDataSources = new HashMap<>();
-			tenantDataSources.put("alice", createDataSource("alice_db"));
-			tenantDataSources.put("bob", createDataSource("bob_db"));
-			tenantDataSources.put("aleks", createDataSource("aleks_db"));
+			Map<Object, Object> tds = new HashMap<>();
+			tds.put("alice", createDataSource("alice_db"));
+			tds.put("bob", createDataSource("bob_db"));
+			tds.put("aleks", createDataSource("aleks_db"));
 
 			// Set them directly in the superclass
 			setDefaultTargetDataSource(createDataSource("default_db"));
-			setTargetDataSources(tenantDataSources);
+			setTargetDataSources(tds);
 
 			// Initialize after setting data sources
 			super.afterPropertiesSet();
