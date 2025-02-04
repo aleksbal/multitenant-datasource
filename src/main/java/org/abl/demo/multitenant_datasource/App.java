@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @SpringBootApplication
-public class MultitenantDatasourceApplication {
+public class App {
 	public static void main(String[] args) {
-		SpringApplication.run(MultitenantDatasourceApplication.class, args);
+		SpringApplication.run(App.class, args);
 	}
 
 	@Bean
@@ -86,7 +86,7 @@ public class MultitenantDatasourceApplication {
 
 		private static DataSource createDataSource(String dbName) {
 			var config = new HikariConfig();
-			config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;");
+			config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'");
 			config.setUsername("sa");
 			config.setPassword("");
 			config.setDriverClassName("org.h2.Driver");
