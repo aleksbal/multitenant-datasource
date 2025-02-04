@@ -1,4 +1,4 @@
-package org.abl.demo.multitenant_datasource;
+package org.abl.demo.spb.multitenantds;
 
 import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.*;
