@@ -51,22 +51,6 @@ public class App {
 		}
 	}
 
-	public static class TenantContext {
-		private static final ThreadLocal<String> tenantHolder = new ThreadLocal<>();
-
-		public static void setTenant(String tenantId) {
-			tenantHolder.set(tenantId);
-		}
-
-		public static String getTenant() {
-			return tenantHolder.get();
-		}
-
-		public static void clear() {
-			tenantHolder.remove();
-		}
-	}
-
 	public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
 		public MultiTenantDataSource() {
@@ -86,7 +70,7 @@ public class App {
 
 		private static DataSource createDataSource(String dbName) {
 			var config = new HikariConfig();
-			config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'");
+			config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
 			config.setUsername("sa");
 			config.setPassword("");
 			config.setDriverClassName("org.h2.Driver");
@@ -98,19 +82,6 @@ public class App {
 		protected Object determineCurrentLookupKey() {
 			return TenantContext.getTenant();
 		}
-
-		public void addTenant(String tenantId) {
-			if (!getResolvedDataSources().containsKey(tenantId)) {
-				DataSource newDataSource = createDataSource(tenantId);
-				Map<Object, Object> updatedDataSources = new HashMap<>(getResolvedDataSources());
-				updatedDataSources.put(tenantId, newDataSource);
-
-				// Update target data sources and reinitialize
-				setTargetDataSources(updatedDataSources);
-				super.afterPropertiesSet();
-			}
-		}
 	}
-
 }
 
