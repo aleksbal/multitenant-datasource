@@ -1,5 +1,7 @@
-package org.abl.demo.spb.multitenantds;
+package org.abl.demo.spb.multitenant;
 
+import org.abl.demo.spb.multitenant.stuff.MultiTenantDataSource;
+import org.abl.demo.spb.multitenant.stuff.TenantContext;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.*;
@@ -54,7 +56,7 @@ public class App {
 		public List<Map<String, Object>> getData(@RequestParam String username) {
 			TenantContext.setTenant(username);
 			try {
-				return jdbcTemplate.queryForList("SELECT * FROM jobs LIMIT 10");
+				return jdbcTemplate.queryForList("SELECT * FROM users LIMIT 10");
 			} finally {
 				TenantContext.clear();
 			}

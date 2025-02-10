@@ -1,4 +1,4 @@
-package org.abl.demo.spb.multitenantds;
+package org.abl.demo.spb.multitenant.stuff;
 
 public class TenantContext {
   private static final ThreadLocal<String> tenantHolder = new ThreadLocal<>();

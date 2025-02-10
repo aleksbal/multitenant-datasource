@@ -1,4 +1,4 @@
-package org.abl.demo.spb.multitenantds;
+package org.abl.demo.spb.multitenant.stuff;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -55,12 +55,12 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
   //config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
   private static DataSource createDataSource(String jdbcUrl) {
-    var config = new HikariConfig();
-    config.setJdbcUrl(jdbcUrl);
-    config.setUsername("sa");
-    config.setPassword("");
-    config.setDriverClassName("org.h2.Driver");
-    config.setMaximumPoolSize(10);
-    return new HikariDataSource(config);
+    var c = new HikariConfig();
+    c.setJdbcUrl(jdbcUrl);
+    c.setUsername("sa");
+    c.setPassword("");
+    c.setDriverClassName("org.h2.Driver");
+    c.setMaximumPoolSize(10);
+    return new HikariDataSource(c);
   }
 }

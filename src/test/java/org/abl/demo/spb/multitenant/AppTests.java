@@ -1,4 +1,4 @@
-package org.abl.demo.spb.multitenantds;
+package org.abl.demo.spb.multitenant;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
