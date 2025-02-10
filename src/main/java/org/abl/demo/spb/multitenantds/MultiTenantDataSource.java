@@ -49,14 +49,14 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
     try (Connection conn = defaultDataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(
             "SELECT jdbc_url, username, password FROM tenants WHERE tenant_id = ?")) {
-      stmt.setString(1, tenantId);
-      try (ResultSet rs = stmt.executeQuery()) {
-        if (rs.next()) {
-          return createDataSource(rs.getString("jdbc_url"), rs.getString("username"), rs.getString("password"));
-        } else {
-          throw new RuntimeException("Tenant not found: " + tenantId);
+        stmt.setString(1, tenantId);
+        try (ResultSet rs = stmt.executeQuery()) {
+          if (rs.next()) {
+            return createDataSource(rs.getString("jdbc_url"), rs.getString("username"), rs.getString("password"));
+          } else {
+            throw new RuntimeException("Tenant not found: " + tenantId);
+          }
         }
-      }
     } catch (SQLException e) {
       throw new RuntimeException("Failed to retrieve tenant data source", e);
     }

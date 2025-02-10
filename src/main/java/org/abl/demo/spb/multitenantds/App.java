@@ -1,7 +1,14 @@
 package org.abl.demo.spb.multitenantds;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.*;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.*;
 import org.springframework.jdbc.datasource.lookup.*;
@@ -51,26 +58,61 @@ public class App {
 		}
 	}
 
+	@Bean(name = "refDataSource")
+	@ConfigurationProperties(prefix = "spring.datasource.refDataSource")
+	public DataSource refDataSource() {
+		return DataSourceBuilder.create().build();
+	}
+
 	public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
-		public MultiTenantDataSource() {
-			// Create the tenant data sources
-			Map<Object, Object> tds = new HashMap<>();
-			tds.put("alice", createDataSource("alice_db"));
-			tds.put("bob", createDataSource("bob_db"));
-			tds.put("aleks", createDataSource("aleks_db"));
+		@Autowired
+		@Qualifier("refDataSource")
+		private DataSource refDataSource;
 
-			// Set them directly in the superclass
-			setDefaultTargetDataSource(createDataSource("default_db"));
-			setTargetDataSources(tds);
+		public MultiTenantDataSource() {
+
+			//super.setDefaultTargetDataSource(createDataSource("registry_db"));
 
 			// Initialize after setting data sources
 			super.afterPropertiesSet();
 		}
 
-		private static DataSource createDataSource(String dbName) {
+		@Override
+    protected DataSource determineTargetDataSource() {
+
+			if (determineCurrentLookupKey() == null || determineCurrentLookupKey() instanceof String)
+				throw new RuntimeException("Data source lookup key is null, check if you set the TenantContext!");
+
+			// if the data source doesn't yet exist create one, otherwise just skip and call method from super class
+			if (!this.getResolvedDataSources().containsKey(determineCurrentLookupKey())) {
+
+				try (var conn = refDataSource.getConnection();
+
+						var stmt = conn.prepareStatement(
+								"SELECT jdbc_url, username, password FROM tenants WHERE tenant_id = ?")) {
+
+						stmt.setString(1, determineCurrentLookupKey().toString());
+
+						try (ResultSet rs = stmt.executeQuery()) {
+							if (rs.next()) {
+								this.getResolvedDataSources().put(determineCurrentLookupKey(), createDataSource(rs.getString("jdbc_url")));
+							} else {
+								throw new RuntimeException("Tenant not found: " + determineCurrentLookupKey());
+							}
+						}
+
+				} catch (SQLException e) {
+					throw new RuntimeException("Failed to retrieve tenant data source", e);
+				}
+			}
+			return super.determineTargetDataSource();
+		}
+
+		private static DataSource createDataSource(String jdbcUrl) {
 			var config = new HikariConfig();
-			config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
+			//config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
+			config.setJdbcUrl(jdbcUrl);
 			config.setUsername("sa");
 			config.setPassword("");
 			config.setDriverClassName("org.h2.Driver");
