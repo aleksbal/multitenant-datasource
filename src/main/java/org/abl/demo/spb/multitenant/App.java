@@ -14,21 +14,43 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.*;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.*;
 import javax.sql.DataSource;
-import java.util.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 @SpringBootApplication
 public class App {
 
 	public static void main(String[] args) {
 		SpringApplication.run(App.class, args);
+	}
+
+	private void runTenantTest(String tenant, DataSource multiDs) throws SQLException {
+
+		TenantContext.setTenant(tenant);
+
+		try (Connection conn = multiDs.getConnection();
+				Statement stmt = conn.createStatement()) {
+
+			// Print the current database (if supported)
+			try (ResultSet dbRs = stmt.executeQuery("SELECT DATABASE() AS db_name")) {  // Works for MySQL
+				if (dbRs.next()) {
+					System.out.println("✅ Connected to database [" + tenant + "]: " + dbRs.getString("db_name"));
+				}
+			} catch (SQLException e) {
+				System.out.println("⚠️ DATABASE() not supported, skipping database name check.");
+			}
+
+			// Fetch all users
+			try (ResultSet rs = stmt.executeQuery("SELECT * FROM users")) {
+				System.out.println("📋 Users in " + tenant + "'s database:");
+				while (rs.next()) {
+					System.out.println(" - " + rs.getString("name"));
+				}
+			}
+		}
 	}
 
 	@Bean(name = "refDataSource")
@@ -45,54 +67,6 @@ public class App {
 		return dataSource;
 	}
 
-	@Component
-	public class DebugDataSource {
-
-		@Value("${spring.datasource.ref-data-source.url:NOT_SET}")
-		private String refDatasourceUrl;
-
-		@PostConstruct
-		public void printLoadedProperties() {
-			System.out.println("Property Loaded: " + refDatasourceUrl);
-		}
-
-		@Autowired
-		public DebugDataSource(@Qualifier("multitenantDataSource") DataSource multiDs) throws SQLException {
-
-			System.out.println("Multitenant datasource Initialized: " + multiDs);
-
-			validateTenantData("alice", multiDs);
-			validateTenantData("bob", multiDs);
-		}
-
-		private void validateTenantData(String tenant, DataSource multiDs) throws SQLException {
-
-			TenantContext.setTenant(tenant);
-
-			try (Connection conn = multiDs.getConnection();
-					Statement stmt = conn.createStatement()) {
-
-				// Print the current database (if supported)
-				try (ResultSet dbRs = stmt.executeQuery("SELECT DATABASE() AS db_name")) {  // Works for MySQL
-					if (dbRs.next()) {
-						System.out.println("✅ Connected to database [" + tenant + "]: " + dbRs.getString("db_name"));
-					}
-				} catch (SQLException e) {
-					System.out.println("⚠️ DATABASE() not supported, skipping database name check.");
-				}
-
-				// Fetch all users
-				try (ResultSet rs = stmt.executeQuery("SELECT * FROM users")) {
-					System.out.println("📋 Users in " + tenant + "'s database:");
-					while (rs.next()) {
-						System.out.println(" - " + rs.getString("name"));
-					}
-				}
-			}
-		}
-
-	}
-
 	@Bean(name = "multitenantDataSource")
 	public DataSource multiTenantDataSource(@Qualifier("refDataSource") DataSource refDs) {
 
@@ -106,25 +80,30 @@ public class App {
 		return new JdbcTemplate(dataSource);
 	}
 
-	@RestController
-	@RequestMapping("/data")
-	public static class DataController {
+	@Component
+	public class DebugDataSource {
 
-		private final JdbcTemplate jdbcTemplate;
+		@Value("${spring.datasource.ref-data-source.url:NOT_SET}")
+		private String refDatasourceUrl;
 
-		public DataController(JdbcTemplate jdbcTemplate) {
-			this.jdbcTemplate = jdbcTemplate;
-		}
-
-		@GetMapping
-		public List<Map<String, Object>> getData(@RequestParam String username) {
-			TenantContext.setTenant(username);
-			try {
-				return jdbcTemplate.queryForList("SELECT * FROM users LIMIT 10");
-			} finally {
-				TenantContext.clear();
-			}
+		@PostConstruct
+		public void printLoadedProperties() {
+			System.out.println("Property Loaded: " + refDatasourceUrl);
 		}
 	}
+
+	@Bean
+	CommandLineRunner runTest(ApplicationContext ctx, @Qualifier("multitenantDataSource") DataSource multiDs) {
+		return args -> {
+			System.out.println("🚀 Running command-line test...");
+
+			runTenantTest("alice", multiDs);
+			runTenantTest("bob", multiDs);
+
+			System.out.println("✅ Test complete. Shutting down.");
+			SpringApplication.exit(ctx, () -> 0); // Shut down the application
+		};
+	}
+
 }
 
