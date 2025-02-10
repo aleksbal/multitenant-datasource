@@ -3,6 +3,7 @@ package org.abl.demo.spb.multitenant.stuff;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.util.HashMap;
+import java.util.Map;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 import javax.sql.DataSource;
@@ -12,6 +13,8 @@ import java.sql.SQLException;
 public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
   private final DataSource refDataSource;
+
+  private volatile Map<Object, DataSource> resolvedDataSources = new HashMap<>();
 
   public MultiTenantDataSource(DataSource refDs) {
     this.setTargetDataSources(new HashMap<>());
@@ -27,11 +30,11 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
   @Override
   public DataSource determineTargetDataSource() {
 
-    if (determineCurrentLookupKey() == null || determineCurrentLookupKey() instanceof String)
+    if (determineCurrentLookupKey() == null || !(determineCurrentLookupKey() instanceof String))
       throw new RuntimeException("Data source lookup key is null, check if you set the TenantContext!");
 
     // if the data source doesn't yet exist create one, otherwise just skip and call method from super class
-    if (!this.getResolvedDataSources().containsKey(determineCurrentLookupKey())) {
+    if (!this.resolvedDataSources.containsKey(determineCurrentLookupKey())) {
 
       try (var conn = refDataSource.getConnection();
 
@@ -42,7 +45,7 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
           try (ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
-              this.getResolvedDataSources().put(determineCurrentLookupKey(),
+              this.resolvedDataSources.put(determineCurrentLookupKey(),
                   createDataSource(rs.getString("jdbc_url"),
                       rs.getString("schema_file"),
                       rs.getString("data_file")));
@@ -55,7 +58,7 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
         throw new RuntimeException("Failed to retrieve tenant data source", e);
       }
     }
-    return super.determineTargetDataSource();
+    return resolvedDataSources.get(determineCurrentLookupKey());
   }
 
   private DataSource createDataSource(String jdbcUrl, String schemaFile, String dataFile) {
@@ -63,7 +66,7 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
     var config = new HikariConfig();
 
     // Build the INIT script execution part
-    StringBuilder finalJdbcUrl = new StringBuilder(jdbcUrl);
+    var finalJdbcUrl = new StringBuilder(jdbcUrl);
 
     if ((schemaFile != null && !schemaFile.isEmpty()) || (dataFile != null && !dataFile.isEmpty())) {
       finalJdbcUrl.append(";INIT=");
@@ -74,7 +77,7 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
       if (dataFile != null && !dataFile.isEmpty()) {
         if (schemaFile != null && !schemaFile.isEmpty()) {
-          finalJdbcUrl.append(" \\; ");  // Separator for multiple scripts
+          finalJdbcUrl.append(" \\;");
         }
         finalJdbcUrl.append("RUNSCRIPT FROM 'classpath:").append(dataFile).append("'");
       }
