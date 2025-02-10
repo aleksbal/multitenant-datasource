@@ -20,6 +20,7 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
   @Override
   protected Object determineCurrentLookupKey() {
+
     return TenantContext.getTenant();
   }
 
@@ -35,13 +36,17 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
       try (var conn = refDataSource.getConnection();
 
           var stmt = conn.prepareStatement(
-              "SELECT jdbc_url, username, password FROM tenants WHERE tenant_id = ?")) {
+              "SELECT jdbc_url, schema_file, data_file FROM tenants WHERE tenant_id = ?")) {
 
           stmt.setString(1, determineCurrentLookupKey().toString());
 
           try (ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
-              this.getResolvedDataSources().put(determineCurrentLookupKey(), createDataSource(rs.getString("jdbc_url")));
+              this.getResolvedDataSources().put(determineCurrentLookupKey(),
+                  createDataSource(rs.getString("jdbc_url"),
+                      rs.getString("schema_file"),
+                      rs.getString("data_file")));
+              afterPropertiesSet();
             } else {
               throw new RuntimeException("Tenant not found: " + determineCurrentLookupKey());
             }
@@ -53,14 +58,34 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
     return super.determineTargetDataSource();
   }
 
-  //config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
-  private static DataSource createDataSource(String jdbcUrl) {
-    var c = new HikariConfig();
-    c.setJdbcUrl(jdbcUrl);
-    c.setUsername("sa");
-    c.setPassword("");
-    c.setDriverClassName("org.h2.Driver");
-    c.setMaximumPoolSize(10);
-    return new HikariDataSource(c);
+  private DataSource createDataSource(String jdbcUrl, String schemaFile, String dataFile) {
+
+    var config = new HikariConfig();
+
+    // Build the INIT script execution part
+    StringBuilder finalJdbcUrl = new StringBuilder(jdbcUrl);
+
+    if ((schemaFile != null && !schemaFile.isEmpty()) || (dataFile != null && !dataFile.isEmpty())) {
+      finalJdbcUrl.append(";INIT=");
+
+      if (schemaFile != null && !schemaFile.isEmpty()) {
+        finalJdbcUrl.append("RUNSCRIPT FROM 'classpath:").append(schemaFile).append("'");
+      }
+
+      if (dataFile != null && !dataFile.isEmpty()) {
+        if (schemaFile != null && !schemaFile.isEmpty()) {
+          finalJdbcUrl.append(" \\; ");  // Separator for multiple scripts
+        }
+        finalJdbcUrl.append("RUNSCRIPT FROM 'classpath:").append(dataFile).append("'");
+      }
+    }
+
+    config.setJdbcUrl(finalJdbcUrl.toString());
+    config.setUsername("sa");
+    config.setPassword("");
+    config.setDriverClassName("org.h2.Driver");
+    config.setMaximumPoolSize(10);
+
+    return new HikariDataSource(config);
   }
 }
