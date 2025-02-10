@@ -1,6 +1,5 @@
 package org.abl.demo.spb.multitenantds;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,14 +69,6 @@ public class App {
 		@Qualifier("refDataSource")
 		private DataSource refDataSource;
 
-		public MultiTenantDataSource() {
-
-			//super.setDefaultTargetDataSource(createDataSource("registry_db"));
-
-			// Initialize after setting data sources
-			super.afterPropertiesSet();
-		}
-
 		@Override
     protected DataSource determineTargetDataSource() {
 
@@ -109,9 +100,9 @@ public class App {
 			return super.determineTargetDataSource();
 		}
 
+		//config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
 		private static DataSource createDataSource(String jdbcUrl) {
 			var config = new HikariConfig();
-			//config.setJdbcUrl("jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
 			config.setJdbcUrl(jdbcUrl);
 			config.setUsername("sa");
 			config.setPassword("");
