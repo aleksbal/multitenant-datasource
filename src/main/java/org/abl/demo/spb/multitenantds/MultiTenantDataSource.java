@@ -2,20 +2,20 @@ package org.abl.demo.spb.multitenantds;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.util.HashMap;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-
 public class MultiTenantDataSource extends AbstractRoutingDataSource {
 
-  private DataSource refDataSource;
+  private final DataSource refDataSource;
 
   public MultiTenantDataSource(DataSource refDs) {
+    this.setTargetDataSources(new HashMap<>());
     this.refDataSource = refDs;
-    this.afterPropertiesSet();
   }
 
   @Override
@@ -37,16 +37,15 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
           var stmt = conn.prepareStatement(
               "SELECT jdbc_url, username, password FROM tenants WHERE tenant_id = ?")) {
 
-        stmt.setString(1, determineCurrentLookupKey().toString());
+          stmt.setString(1, determineCurrentLookupKey().toString());
 
-        try (ResultSet rs = stmt.executeQuery()) {
-          if (rs.next()) {
-            this.getResolvedDataSources().put(determineCurrentLookupKey(), createDataSource(rs.getString("jdbc_url")));
-          } else {
-            throw new RuntimeException("Tenant not found: " + determineCurrentLookupKey());
+          try (ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+              this.getResolvedDataSources().put(determineCurrentLookupKey(), createDataSource(rs.getString("jdbc_url")));
+            } else {
+              throw new RuntimeException("Tenant not found: " + determineCurrentLookupKey());
+            }
           }
-        }
-
       } catch (SQLException e) {
         throw new RuntimeException("Failed to retrieve tenant data source", e);
       }
@@ -64,5 +63,4 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
     config.setMaximumPoolSize(10);
     return new HikariDataSource(config);
   }
-
 }
