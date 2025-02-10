@@ -3,7 +3,10 @@ package org.abl.demo.spb.multitenant;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PostConstruct;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import org.abl.demo.spb.multitenant.stuff.MultiTenantDataSource;
 import org.abl.demo.spb.multitenant.stuff.TenantContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,17 +57,38 @@ public class App {
 		}
 
 		@Autowired
-		public DebugDataSource(@Qualifier("refDataSource") DataSource refDs,
-				@Qualifier("multitenantDataSource") DataSource multiDs) throws SQLException {
+		public DebugDataSource(@Qualifier("multitenantDataSource") DataSource multiDs) throws SQLException {
 
 			System.out.println("Multitenant datasource Initialized: " + multiDs);
 
-			TenantContext.setTenant("alice");
-			System.out.println("refDataSource Initialized: " + multiDs.getConnection());
+			validateTenantData("alice", multiDs);
+			validateTenantData("bob", multiDs);
+		}
 
-			TenantContext.setTenant("bob");
-			System.out.println("refDataSource Initialized: " + multiDs.getConnection());
+		private void validateTenantData(String tenant, DataSource multiDs) throws SQLException {
 
+			TenantContext.setTenant(tenant);
+
+			try (Connection conn = multiDs.getConnection();
+					Statement stmt = conn.createStatement()) {
+
+				// Print the current database (if supported)
+				try (ResultSet dbRs = stmt.executeQuery("SELECT DATABASE() AS db_name")) {  // Works for MySQL
+					if (dbRs.next()) {
+						System.out.println("✅ Connected to database [" + tenant + "]: " + dbRs.getString("db_name"));
+					}
+				} catch (SQLException e) {
+					System.out.println("⚠️ DATABASE() not supported, skipping database name check.");
+				}
+
+				// Fetch all users
+				try (ResultSet rs = stmt.executeQuery("SELECT * FROM users")) {
+					System.out.println("📋 Users in " + tenant + "'s database:");
+					while (rs.next()) {
+						System.out.println(" - " + rs.getString("name"));
+					}
+				}
+			}
 		}
 
 	}
