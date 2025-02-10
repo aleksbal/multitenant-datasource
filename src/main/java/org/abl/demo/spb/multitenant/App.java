@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.abl.demo.spb.multitenant.stuff.MultiTenantDataSource;
 import org.abl.demo.spb.multitenant.stuff.TenantContext;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.*;
@@ -29,39 +28,41 @@ public class App {
 
 	private void runTenantTest(String tenant, DataSource multiDs) throws SQLException {
 
+		//✅ here, database is switched for tenant
 		TenantContext.setTenant(tenant);
 
 		try (Connection conn = multiDs.getConnection();
-				Statement stmt = conn.createStatement()) {
 
-			// Print the current database (if supported)
-			try (ResultSet dbRs = stmt.executeQuery("SELECT DATABASE() AS db_name")) {  // Works for MySQL
-				if (dbRs.next()) {
-					System.out.println("✅ Connected to database [" + tenant + "]: " + dbRs.getString("db_name"));
-				}
-			} catch (SQLException e) {
-				System.out.println("⚠️ DATABASE() not supported, skipping database name check.");
-			}
+				var stmt = conn.createStatement()) {
 
-			// Fetch all users
-			try (ResultSet rs = stmt.executeQuery("SELECT * FROM users")) {
-				System.out.println("📋 Users in " + tenant + "'s database:");
-				while (rs.next()) {
-					System.out.println(" - " + rs.getString("name"));
+				// Print the current database (if supported)
+				try (ResultSet dbRs = stmt.executeQuery("SELECT DATABASE() AS db_name")) {  // Works for MySQL
+					if (dbRs.next()) {
+						System.out.println("✅ Connected to database [" + tenant + "]: " + dbRs.getString("db_name"));
+					}
+				} catch (SQLException e) {
+					System.out.println("⚠️ DATABASE() not supported, skipping database name check.");
 				}
-			}
+
+				// Fetch all users
+				try (ResultSet rs = stmt.executeQuery("SELECT * FROM users")) {
+					System.out.println("📋 Users in " + tenant + "'s database:");
+					while (rs.next()) {
+						System.out.println(" - " + rs.getString("name"));
+					}
+				}
 		}
 	}
 
 	@Bean(name = "refDataSource")
 	public DataSource refDataSource() {
-		HikariConfig config = new HikariConfig();
+		var config = new HikariConfig();
 		config.setJdbcUrl("jdbc:h2:mem:multitenant-db;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'\\;RUNSCRIPT FROM 'classpath:data.sql'");
 		config.setDriverClassName("org.h2.Driver");
 		config.setUsername("sa");
 		config.setPassword("");
 
-		HikariDataSource dataSource = new HikariDataSource(config);
+		var dataSource = new HikariDataSource(config);
 
 		System.out.println("✅ Fully Configured refDataSource: " + dataSource.getJdbcUrl());
 		return dataSource;
