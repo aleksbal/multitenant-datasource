@@ -2,7 +2,6 @@ package org.abl.demo.spb.multitenant;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import jakarta.annotation.PostConstruct;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,14 +10,12 @@ import java.util.Map;
 import org.abl.demo.spb.multitenant.stuff.MultiTenantDataSource;
 import org.abl.demo.spb.multitenant.stuff.TenantContext;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.*;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.*;
 import javax.sql.DataSource;
-import org.springframework.stereotype.Component;
 
 @SpringBootApplication
 public class App {
@@ -52,18 +49,6 @@ public class App {
 	@Bean
 	public JdbcTemplate jdbcTemplate(@Qualifier("multitenantDataSource")  DataSource dataSource) {
 		return new JdbcTemplate(dataSource);
-	}
-
-	@Component
-	public class DebugDataSource {
-
-		@Value("${spring.datasource.ref-data-source.url:NOT_SET}")
-		private String refDatasourceUrl;
-
-		@PostConstruct
-		public void printLoadedProperties() {
-			System.out.println("Property Loaded: " + refDatasourceUrl);
-		}
 	}
 
 	private void runTenantTest(String tenant, DataSource multiDs) throws SQLException {
