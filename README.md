@@ -1,7 +1,7 @@
 # Multi-Tenant Database Switching in Spring Boot with AbstractRoutingDatasource
 
-This project implements a **Spring Boot 3 (Java 21) REST API** with sort of **dynamic database switching** for each tenant (user). 
-Basic problem was in a rudimentary way described [here](https://www.baeldung.com/spring-abstract-routing-data-source). We'll use Spring AbstractRoutingDatasource.
+This example is based on **Spring Boot 3 (Java 21) and it demonstrates **dynamic database switching** for different tenants (users). We'll use Spring AbstractRoutingDatasource.
+Basic problem has rudimentary been described [here](https://www.baeldung.com/spring-abstract-routing-data-source).
 
 - **Every client/user has their own SQL database instance (multi-tenancy).**
 - Uses **Spring JDBC, HikariCP connection pooling, and `ThreadLocal` context** to implement multi-tenancy.  
